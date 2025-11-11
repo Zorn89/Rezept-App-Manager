@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gourmet-Manager</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>🍳 Gourmet-Manager</h1>
+        <p>Verwalte deine Rezepte und generiere Einkaufslisten.</p>
+    </header>
+
+    <main>
+        <section id="recipe-input">
+            <h2>Neues Rezept hinzufügen</h2>
+            <form id="add-recipe-form">
+                <input type="text" id="recipe-name" placeholder="Name des Rezepts" required>
+                <textarea id="recipe-ingredients" placeholder="Zutaten (je Zeile eine Zutat)" required></textarea>
+                <textarea id="recipe-instructions" placeholder="Zubereitungsschritte" required></textarea>
+                <button type="submit">Rezept speichern</button>
+            </form>
+        </section>
+
+        <section id="recipe-list">
+            <h2>Deine Rezepte</h2>
+            </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
