@@ -168,7 +168,7 @@ generateListBtn.addEventListener('click', async () => {
         
         // Anzeige der Einkaufsliste
         const listText = shoppingList.map(item => `\n- ${item}`).join('');
-        alert(`Ihre konsolidierte Einkaufsliste:\n\n${listText}`);
+        alert(`Ihre Einkaufsliste:\n\n${listText}`);
         
     } catch (error) {
         console.error("Fehler bei Einkaufslisten-Generierung:", error);
