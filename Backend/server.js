@@ -1,74 +1,64 @@
-// server.js - READ (Lesen)
-app.get('/api/recipes', async (req, res) => {
-    try {
-        // SQL-Abfrage: Holt alle Spalten (*) aus der Tabelle 'recipes'
-        const result = await db.query('SELECT * FROM recipes ORDER BY id DESC');
-        
-        // Sende die Daten der abgerufenen Zeilen als JSON an das Frontend
-        res.json(result.rows); 
-    } catch (err) {
-        console.error("Fehler beim Abrufen:", err);
-        res.status(500).send('Interner Serverfehler.');
-    }
-});
+require('dotenv').config(); // Lädt Umgebungsvariablen (DB-Daten)
+const express = require('express');
+const cors = require('cors'); // Wichtig für die Kommunikation mit dem Frontend
+const db = require('./db'); // Importiert die PostgreSQL-Datenbankverbindung
 
-// server.js - CREATE (Erstellen)
-app.post('/api/recipes', async (req, res) => {
-    // req.body enthält die JSON-Daten vom Frontend
-    const { name, ingredients, instructions } = req.body; 
+const app = express();
+// Nutze entweder den Port aus den Umgebungsvariablen (AWS/Deployment) oder Port 3000 (Lokal)
+const port = process.env.PORT || 3000; 
 
-    // Verwendung von $1, $2, $3 (Prepared Statement) statt String-Konkatenation
+// --- Middleware ---
+
+// 1. CORS-Aktivierung: Erlaubt Anfragen von anderen Domänen (wie Ihrem lokalen Frontend-Server)
+// Für die Entwicklung ist app.use(cors()) in Ordnung. Für die Produktion sollte eine spezifische Origin festgelegt werden.
+app.use(cors()); 
+
+// 2. Body Parser: Erlaubt das Parsen von JSON-Daten, die im Request-Body gesendet werden
+app.use(express.json()); 
+
+// --- API Routen (RESTful Endpunkte) ---
+const API_PREFIX = '/api';
+
+// ----------------------------------------------------
+// 1. CREATE: Neues Rezept speichern (POST /api/recipes)
+// ----------------------------------------------------
+app.post(`${API_PREFIX}/recipes`, async (req, res) => {
+    const { name, ingredients, instructions } = req.body;
+    
+    // Prepared Statement schützt vor SQL Injection
     const sql = 'INSERT INTO recipes (name, ingredients, instructions) VALUES ($1, $2, $3) RETURNING *';
     const params = [name, ingredients, instructions];
 
     try {
         const result = await db.query(sql, params);
-        
-        // Sende das neu erstellte Objekt zurück
-        res.status(201).json(result.rows[0]); 
+        res.status(201).json(result.rows[0]);
     } catch (err) {
-        console.error("Fehler beim Speichern:", err);
-        res.status(400).send('Ungültige Daten oder Datenbankfehler.');
+        console.error("Fehler beim Speichern des Rezepts:", err);
+        res.status(400).send('Ungültige Daten oder Datenbankfehler beim Erstellen.');
     }
 });
 
-// server.js 
-const port = process.env.PORT || 8080; // Wichtig für AWS EB
-
-app.listen(port, () => {
-    console.log(`Backend läuft auf Port ${port}`);
-});
-
-
-// server.js - DELETE (Löschen)
-
-app.delete('/api/recipes/:id', async (req, res) => {
-    // Die ID wird aus der URL-Parameter (req.params) gelesen
-    const id = req.params.id;
-    
+// ----------------------------------------------------
+// 2. READ: Alle Rezepte abrufen (GET /api/recipes)
+// ----------------------------------------------------
+app.get(`${API_PREFIX}/recipes`, async (req, res) => {
     try {
-        const result = await db.query('DELETE FROM recipes WHERE id = $1 RETURNING *', [id]);
-        
-        if (result.rowCount === 0) {
-            // Wenn keine Zeile gelöscht wurde, existierte das Rezept nicht
-            return res.status(404).send('Rezept nicht gefunden.');
-        }
-        
-        // Status 204 No Content ist Standard für erfolgreiches DELETE
-        res.status(204).send(); 
+        // Holt alle Spalten und sortiert nach der ID (neueste zuerst)
+        const result = await db.query('SELECT * FROM recipes ORDER BY id DESC');
+        res.json(result.rows);
     } catch (err) {
-        console.error("Fehler beim Löschen:", err);
-        res.status(500).send('Interner Serverfehler.');
+        console.error("Fehler beim Abrufen der Rezepte:", err);
+        res.status(500).send('Interner Serverfehler beim Lesen der Rezepte.');
     }
 });
 
-// server.js - UPDATE (Aktualisieren)
-
-app.put('/api/recipes/:id', async (req, res) => {
+// ----------------------------------------------------
+// 3. UPDATE: Rezept aktualisieren (PUT /api/recipes/:id)
+// ----------------------------------------------------
+app.put(`${API_PREFIX}/recipes/:id`, async (req, res) => {
     const id = req.params.id;
     const { name, ingredients, instructions } = req.body;
     
-    // SQL-Abfrage: Aktualisiert die Felder, wo die ID übereinstimmt
     const sql = 'UPDATE recipes SET name = $1, ingredients = $2, instructions = $3 WHERE id = $4 RETURNING *';
     const params = [name, ingredients, instructions, id];
 
@@ -79,18 +69,38 @@ app.put('/api/recipes/:id', async (req, res) => {
             return res.status(404).send('Rezept nicht gefunden.');
         }
         
-        // Sende das aktualisierte Objekt zurück
         res.json(result.rows[0]); 
     } catch (err) {
-        console.error("Fehler beim Aktualisieren:", err);
-        res.status(500).send('Interner Serverfehler.');
+        console.error("Fehler beim Aktualisieren des Rezepts:", err);
+        res.status(500).send('Interner Serverfehler beim Aktualisieren.');
     }
 });
 
-// server.js - Einkaufslisten-Logik
+// ----------------------------------------------------
+// 4. DELETE: Rezept löschen (DELETE /api/recipes/:id)
+// ----------------------------------------------------
+app.delete(`${API_PREFIX}/recipes/:id`, async (req, res) => {
+    const id = req.params.id;
+    
+    try {
+        const result = await db.query('DELETE FROM recipes WHERE id = $1', [id]);
+        
+        if (result.rowCount === 0) {
+            return res.status(404).send('Rezept nicht gefunden.');
+        }
+        
+        // Status 204 No Content
+        res.status(204).send(); 
+    } catch (err) {
+        console.error("Fehler beim Löschen des Rezepts:", err);
+        res.status(500).send('Interner Serverfehler beim Löschen.');
+    }
+});
 
-app.post('/api/shoppinglist', async (req, res) => {
-    // Erwarte ein Array von IDs, z.B. { recipeIds: [1, 5, 8] }
+// ----------------------------------------------------
+// 5. ZUSATZ: Einkaufsliste generieren (POST /api/shoppinglist)
+// ----------------------------------------------------
+app.post(`${API_PREFIX}/shoppinglist`, async (req, res) => {
     const { recipeIds } = req.body;
 
     if (!recipeIds || !Array.isArray(recipeIds) || recipeIds.length === 0) {
@@ -98,34 +108,39 @@ app.post('/api/shoppinglist', async (req, res) => {
     }
 
     try {
-        // SQL-Abfrage: Holt die Zutaten aller ausgewählten Rezepte
+        // Holt die Zutaten aller ausgewählten Rezepte
         const ingredientsResult = await db.query(
             'SELECT ingredients FROM recipes WHERE id = ANY($1)',
-            [recipeIds] // $1 wird als Array von IDs behandelt
+            [recipeIds]
         );
 
         let consolidatedList = {};
 
         ingredientsResult.rows.forEach(row => {
-            // Gehe jede Zutat (jede Zeile im Textfeld) durch
+            // Teile den Text in Zeilen und entferne leere Zeilen
             const lines = row.ingredients.split('\n').filter(line => line.trim() !== '');
 
             lines.forEach(line => {
-                // Hier müsste eine komplexe Parsing-Logik (z.B. "500g Mehl") hin.
-                // Für unser Projekt nutzen wir eine vereinfachte Logik (nur das Hinzufügen des Textes)
-
                 const key = line.trim();
-                // Wenn die Zutat schon in der Liste ist, wird die Zeile hinzugefügt
+                // Hier wird vereinfacht nur der Eintrag gezählt. 
+                // Für eine professionelle Lösung müsste hier die Menge summiert werden (z.B. "500g Mehl" + "200g Mehl").
                 consolidatedList[key] = (consolidatedList[key] || 0) + 1; 
             });
         });
 
-        // Gib die Liste als Array von Strings zurück
         const shoppingList = Object.keys(consolidatedList);
         
         res.json(shoppingList);
     } catch (err) {
         console.error("Fehler bei Einkaufslisten-Generierung:", err);
-        res.status(500).send('Interner Serverfehler.');
+        res.status(500).send('Interner Serverfehler bei der Listenverarbeitung.');
     }
+});
+
+
+// --- Server starten ---
+
+app.listen(port, () => {
+    console.log(`✅ Backend läuft auf http://localhost:${port}`);
+    console.log(`API-Endpunkte unter http://localhost:${port}${API_PREFIX}`);
 });
