@@ -4,7 +4,7 @@ const addRecipeForm = document.getElementById('add-recipe-form');
 const generateListBtn = document.getElementById('generate-list-btn'); // Muss im HTML existieren!
 
 // 🚨 WICHTIG: Ändern Sie dies zur AWS URL, sobald deployed!
-const API_BASE_URL = 'http://localhost:3000/api'; 
+const API_BASE_URL = 'http://35.159.52.137/api'; 
 
 /**
  * Erstellt das HTML-Element für ein einzelnes Rezept ("recipe-card").
